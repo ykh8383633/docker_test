@@ -1,0 +1,32 @@
+# Use Ubuntu 20.04 as the base image
+FROM ubuntu:20.04
+
+# Set environment variables to avoid interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN echo "mysql-server mysql-server/root_password password" | debconf-set-selections
+RUN echo "mysql-server mysql-server/root_password_again password" | debconf-set-selections
+
+# Update the package list and install necessary packages
+RUN apt-get update && \
+    apt-get install -y software-properties-common gnupg2 vim nano curl wget && \
+    apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8 && \
+    add-apt-repository 'deb [arch=amd64] http://mirror.edatel.net.co/mariadb/repo/10.3/ubuntu focal main' && \
+    apt-get update && \
+    apt-get install -y mariadb-server && \
+    apt-get install mariadb-plugin-mroonga && \
+    apt-get install -y groonga-tokenizer-mecab && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set up initialization script
+COPY init-mariadb.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/init-mariadb.sh
+
+# Set up the MariaDB configuration directory and data directory
+VOLUME ["/var/lib/mysql", "/etc/mysql"]
+
+# Expose the MariaDB port
+EXPOSE 3306
+
+# Start the initialization script and then MariaDB
+CMD ["/usr/local/bin/init-mariadb.sh"]
